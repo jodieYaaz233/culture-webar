@@ -1,0 +1,22 @@
+/* ==========================================================================
+   龙马 · 样式入口
+   --------------------------------------------------------------------------
+   页面只引这一个文件：<link rel="stylesheet" href="./styles/index.css" />
+
+   分层顺序固定，后层可覆盖前层；未分层的业务样式（如 HTML 上的 style 属性）
+   始终优先，所以 JS 写内联 display/left/top 的行为不受影响。
+
+       tokens      颜色 / 字号 / 间距 / 圆角 / 动效
+       base        重置、相机构图叠层、全局排版
+       components  chip / btn / field / slider / cmd / cmdchip
+       screens     AR 运行时叠层与模式显隐
+       page        落地页版式、展开交互、底部光带、入场编排
+   ========================================================================== */
+
+@layer tokens, base, components, screens, page;
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+@import "./screens.css";
+@import "./landing.css";

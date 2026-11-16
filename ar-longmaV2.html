@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>龙马负图</title>
+  <meta name="color-scheme" content="dark" />
+  <link rel="stylesheet" href="./styles/index.css" />
+</head>
+<body>
+  <video id="v" autoplay playsinline muted></video>
+  <canvas id="gl"></canvas>
+
+  <div id="hud">正在加载…</div>
+  <div id="fn"></div>
+  <div id="diag"></div>
+
+  <div id="start">
+    <div class="pg">
+      <header id="brandbar" data-state="on">
+        <div class="seal">龍馬</div>
+        <div class="brand-text">
+          <h1 class="brand-name"><span class="typed" id="brandWord">龙马负图</span></h1>
+          <span id="ver"></span>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="slogan"><span class="typed" id="sloganText">可以写一点介绍</span></p>
+        <!--div class="slogan-rule" aria-hidden="true"></div-->
+      </section>
+
+      <div class="ctlbar" role="group" aria-label="设备与模型">
+        <label class="field"><span>摄像头</span><select id="cam"><option value="__auto__">自动（掌心用前置 / 桌面用后置）</option></select></label>
+        <button id="goBT" class="btn ghost">连接蓝牙</button>
+        <button id="goDiag" class="btn ghost">蓝牙自检</button>
+        <button id="importStart" class="btn ghost">导入模型（.glb）</button>
+      </div>
+
+      <section class="stage" id="stage" aria-label="龙马三维环绕展示">
+        <canvas id="fx"></canvas>
+      </section>
+
+      <!-- 换成真实照片：给 .mode-wrap 加 data-img，并设 --mode-img 指向图片路径 -->
+      <div class="modes">
+        <div class="mode-wrap" data-side="left">
+          <button id="goPalm" class="mode-card">
+            <span class="mode-name">掌心控制</span>
+            <span class="mode-art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5V4a1.5 1.5 0 0 1 3 0v7.5"/><path d="M14 11.5V6a1.5 1.5 0 0 1 3 0v8"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.6-2.1L5 15.5a1.6 1.6 0 0 1 2.4-2.1L8 14"/></svg></span>
+            <span class="mode-desc">前置摄像头 · 张掌召出龙马 · 手势触发动作</span>
+          </button>
+          <div class="pops" aria-hidden="true"></div>
+        </div>
+        <div class="mode-wrap" data-side="right">
+          <button id="goTable" class="mode-card">
+            <span class="mode-name">桌面模式</span>
+            <span class="mode-art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M5 8v11"/><path d="M19 8v11"/><path d="M4 19l4-6"/><path d="M20 19l-4-6"/><path d="M9 13h6"/></svg></span>
+            <span class="mode-desc">固定机位 · 四角标定 · 龙马按真实尺寸站在桌上</span>
+          </button>
+          <div class="pops" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer id="footbar">
+      <div class="wave" aria-hidden="true"></div>
+      <div class="wave-line" aria-hidden="true"></div>
+      <p class="foot">全国仿真创新应用大赛 · 数字文创</p>
+    </footer>
+  </div>
+
+  <div id="calib" class="hidden">
+    <svg id="cline"><polygon id="quad" fill="rgba(47,111,237,.12)" stroke="#2f6fed" stroke-width="2" points=""></polygon></svg>
+    <div class="corner" id="c0"></div><div class="corner" id="c1"></div><div class="corner" id="c2"></div><div class="corner" id="c3"></div>
+  </div>
+  <div id="bar">
+    <div class="bar-head">
+      <span class="chip">桌面标定</span>
+      <span id="mode" class="muted">① 拖四角 ② 填宽深 ③ 点标定</span>
+    </div>
+    <div class="bar-fields">
+      <label class="field"><span>宽</span><input id="W" type="number" value="1.2" step="0.1"><span>m</span></label>
+      <label class="field"><span>深</span><input id="D" type="number" value="0.8" step="0.1"><span>m</span></label>
+      <button id="cal" class="btn primary">标定</button>
+      <button id="recal" class="btn small">重标四角</button>
+    </div>
+  </div>
+  <div id="st">模型加载中…</div>
+  <button id="back" class="btn ghost small" type="button" aria-label="返回主页面">← 返回</button>
+
+  <div id="panel">
+    <div class="sheet-head">
+      <span class="chip" id="modeChip">掌心</span>
+      <div id="bt" class="chip palm-only" style="background:rgba(255,255,255,.05);border-color:var(--line);color:var(--muted)">蓝牙：未连接</div>
+      <label class="field"><span>模型</span><select id="modelSel"></select></label>
+      <button id="importPanel" class="btn small">导入</button>
+      <button id="collapse" class="btn small" aria-expanded="true">收起</button>
+    </div>
+    <div id="sheetBody">
+    <div id="customRow" class="row tools" style="display:none">
+      <span class="row-label">自定义朝向</span>
+      <button class="btn small" data-rot="x">绕 X 90°</button>
+      <button class="btn small" data-rot="y">绕 Y 180°</button>
+      <button class="btn small" data-rot="z">绕 Z 90°</button>
+      <button class="btn small" data-rot="reset">复位</button>
+    </div>
+    <div class="palm-only">
+      <div class="grid sliders">
+        <label class="slider"><span>大小</span><input id="sScale" type="range" min="0.2" max="3" step="0.05" value="1"><output id="oSScale">1.00×</output></label>
+        <label class="slider"><span>转正</span><input id="sYaw" type="range" min="0" max="360" step="15" value="0"><output id="oSYaw">0°</output></label>
+        <label class="slider"><span>俯仰</span><input id="sPitch" type="range" min="-60" max="60" step="5" value="0"><output id="oSPitch">0°</output></label>
+        <label class="slider"><span>掌轴</span><input id="sRoll" type="range" min="0" max="360" step="15" value="270"><output id="oSRoll">270°</output></label>
+      </div>
+      <div class="row" id="cmdrow">
+        <span class="row-label">手势动作</span>
+        <label class="cmd">跳舞<input class="bcmd" id="bDance" data-key="dance" maxlength="2" size="2"><button class="bsend" data-key="dance">发送</button></label>
+        <label class="cmd">前进<input class="bcmd" id="bWalk" data-key="walk" maxlength="2" size="2"><button class="bsend" data-key="walk">发送</button></label>
+        <label class="cmd">呼吸灯<input class="bcmd" id="bLight" data-key="light" maxlength="2" size="2"><button class="bsend" data-key="light">发送</button></label>
+      </div>
+      <div class="row cmds">
+        <span class="row-label">指令</span>
+        <div id="cmdList" class="cmd-list"></div>
+        <button id="cmdAdd" class="btn small">＋ 自定义</button>
+      </div>
+      <div class="row tools">
+        <button id="btnFlip" class="btn small">翻转朝向</button>
+        <button id="btnMirror" class="btn small">镜像修正</button>
+        <button id="btnAxes" class="btn small">坐标轴</button>
+        <button id="btnDiag" class="btn small">蓝牙自检</button>
+      </div>
+    </div>
+    <div class="table-only">
+      <div class="grid sliders">
+        <label class="slider"><span>真实高度</span><input id="sSize" type="range" min="0.05" max="0.8" step="0.01" value="0.3"><output id="oSSize">0.30 m</output></label>
+        <label class="slider"><span>速度</span><input id="sSpeed" type="range" min="0.05" max="1.5" step="0.05" value="0.3"><output id="oSSpeed">0.30 m/s</output></label>
+      </div>
+      <div class="row hintline">点桌面置目标点，龙马按真实米制速度走过去</div>
+    </div>
+    </div>
+  </div>
+
+  <input id="fileModel" type="file" accept=".glb,model/gltf-binary" style="display:none">
+
+  <script src="./landing.js" defer></script>
+
+  <script type="importmap">
+  { "imports": {
+    "three": "./samples/three-webxr-hittest/libs/three.module.js",
+    "three/addons/": "./samples/three-webxr-hittest/libs/jsm/"
+  } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { BleClient, hex } from './ble.js?v=L2026-10-21g';
+        import { palmBasis, toDisplay, HS_DEFAULT } from './palmframe.js?v=L2026-10-21g';
+    import { MODELS, a19Columns, standColumns } from './models.js?v=L2026-10-21g';
+    import { homography, poseFromHomography, rectCorners, inv3, applyH } from './tablepose.js?v=L2026-10-21g';
+
+    const VER = 'L2026-10-21g';
+    document.getElementById('ver').textContent = '版本 ' + VER;
+    let MODE = 'palm';                                   // 'palm' | 'table'
+
+    const hud = document.getElementById('hud'), fnEl = document.getElementById('fn');
+    const btEl = document.getElementById('bt');
+    const diagEl = document.getElementById('diag');
+    const stEl = document.getElementById('st'), modeEl = document.getElementById('mode');
+    const setSt = (t, warn) => { stEl.textContent = t; stEl.classList.toggle('warn', !!warn); };
+    const Wm = () => parseFloat(document.getElementById('W').value);
+    const Dm = () => parseFloat(document.getElementById('D').value);
+
+    // ---------- 摄像头 ----------
+    const AUTO = '__auto__', sel = document.getElementById('cam');
+    const BAD = /privacy|virtual|obs|parsec|emulator|hello|3d\s*sr|背景|blur|bokeh/i;
+    const scoreFor = (d, mode) => {
+      const l = (d.label || '').toLowerCase();
+      if (BAD.test(l)) return -10;
+      const front = /front|user|face|前置/i.test(l), back = /back|environment|rear|后置|主摄|wide/i.test(l);
+      if (mode === 'palm') return front ? 40 : (back ? 20 : 25);
+      return back ? 40 : (front ? 10 : 25);
+    };
+    async function list() {
+      let d = []; try { d = (await navigator.mediaDevices.enumerateDevices()).filter(x => x.kind === 'videoinput'); } catch (e) {}
+      sel.replaceChildren();
+      const o0 = document.createElement('option'); o0.value = AUTO; o0.textContent = '自动（掌心用前置 / 桌面用后置）'; sel.appendChild(o0);
+      d.sort((a, b) => scoreFor(b, 'palm') - scoreFor(a, 'palm'));
+      d.forEach((x, i) => { const o = document.createElement('option'); o.value = x.deviceId; o.textContent = x.label || ('摄像头' + i); sel.appendChild(o); });
+      if (d[0]) sel.value = d[0].deviceId;
+    }
+    list();
+    let chosenDevice = null;
+    const md = navigator.mediaDevices, origGum = md.getUserMedia.bind(md);
+    md.getUserMedia = function (c) { c = Object.assign({}, c); if (c.video) c.video = (chosenDevice && chosenDevice !== AUTO) ? { deviceId: { exact: chosenDevice } } : true; return origGum(c); };
+
+    // ---------- three.js ----------
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gl'), alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 100);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(0.5, 1, 1); scene.add(dl);
+    function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+    addEventListener('resize', resize); resize();
+
+    // 掌心轴（调试）
+    const axGrp = new THREE.Group(); axGrp.visible = false; scene.add(axGrp);
+    [['#ff5555', [1, 0, 0]], ['#55ff77', [0, 1, 0]], ['#5599ff', [0, 0, 1]]].forEach(([c, d]) => {
+      const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(d[0] * 0.22, d[1] * 0.22, d[2] * 0.22)]);
+      axGrp.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: c })));
+    });
+    // 桌面定位环
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.055, 0.07, 32),
+      new THREE.MeshBasicMaterial({ color: 0x36d17a, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
+
+    // ---------- 模型 ----------
+    // 掌心：对齐到 a19 轴系（上=+Z、头=-X），按"最大边"归一；
+    // 桌面：统一"上=+Y、头=-X"，按高度归一（holder.scale 即真实米制高度）。
+    const horse = new THREE.Group(); horse.visible = false; scene.add(horse);
+    const draco = new DRACOLoader(); draco.setDecoderPath('./samples/three-webxr-hittest/libs/jsm/libs/draco/gltf/');
+    const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+    let baseScale = 1, curModelId = 'a19', modelReady = false;
+
+    let customPreset = null;
+    const customExtra = new THREE.Quaternion();          // 导入模型的朝向微调（本地轴）
+    function currentPreset(id) {
+      if (id === '__custom__' && customPreset) return customPreset;
+      return MODELS[id] || MODELS.a19;
+    }
+    function loadModel(id) {
+      const preset = currentPreset(id);
+      curModelId = id; modelReady = false;
+      while (horse.children.length) {
+        const c = horse.children.pop();
+        c.traverse(o => { if (o.isMesh) { o.geometry && o.geometry.dispose(); for (const m of (Array.isArray(o.material) ? o.material : [o.material])) m && m.dispose && m.dispose(); } });
+        horse.remove(c);
+      }
+      setSt('模型加载中（' + preset.name + '）…', true);
+      hud.textContent = '加载模型：' + preset.name + '…';
+      loader.load(preset.url, g => {
+        const model = g.scene;
+        const cols = (MODE === 'table') ? standColumns(preset) : a19Columns(preset);
+        model.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+          new THREE.Vector3(...cols[0]), new THREE.Vector3(...cols[1]), new THREE.Vector3(...cols[2])));
+        if (preset.custom) model.quaternion.multiply(customExtra);   // 用户微调叠加在自动轴系之后
+        model.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3(); box.getSize(size);
+        const center = new THREE.Vector3(); box.getCenter(center);
+        model.position.set(-center.x, -box.min.y, -center.z);
+        horse.add(model);
+        model.updateMatrixWorld(true);
+        // 有些导出模型底部带"塌缩到一点"的残留网格（longma 有一簇贴在 (−0.8,−1.2,0)），
+        // 它会把包围盒底面拉到蹄子下方，看起来就是四足悬浮。隐藏这类退化网格后再求可见包围盒。
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const tmpB = new THREE.Box3(), tmpS = new THREE.Vector3();
+        let hidden = 0;
+        model.traverse(o => {
+          if (!(o.isMesh && o.geometry && o.geometry.attributes.position)) return;
+          o.geometry.computeBoundingBox();
+          if (!o.geometry.boundingBox) return;
+          tmpB.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+          tmpB.getSize(tmpS);
+          if (Math.max(tmpS.x, tmpS.y, tmpS.z) < 0.03 * maxDim && tmpB.min.y < box.min.y + 0.10 * size.y) { o.visible = false; hidden++; }
+        });
+        const vb = new THREE.Box3();
+        model.traverse(o => {
+          if (!(o.isMesh && o.visible && o.geometry && o.geometry.attributes.position)) return;
+          o.geometry.computeBoundingBox();
+          const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+          vb.union(b);
+        });
+        if (!vb.isEmpty()) {
+          const vc = new THREE.Vector3(); vb.getCenter(vc);
+          model.position.x -= vc.x; model.position.z -= vc.z; model.position.y -= vb.min.y;
+          model.updateMatrixWorld(true);
+        }
+        const visH = vb.isEmpty() ? Math.max(size.y, 1e-6) : Math.max(vb.max.y - vb.min.y, 1e-6);
+        baseScale = (MODE === 'table') ? (1 / visH) : (1 / maxDim);
+        window.__modelInfo = { hidden, visH: +visH.toFixed(2), baseScale: +baseScale.toFixed(4) };
+        modelReady = true;
+        if (MODE === 'table') {
+          setSt('模型已就绪（' + preset.name + '）· 尚未标定 → ① 拖四角 ② 填宽深 ③ 点“标定”', true);
+        } else {
+          hud.textContent = '✅ 模型就绪（' + preset.name + '）：张开五指试试';
+        }
+      }, (p) => {
+        // 进度夹在 0–100：某些服务器/Blob 的 total 与实际投递字节不一致（压缩传输、估算长度），
+        // loaded/total 会略大于 1，直接乘 100 会冒出 106% 这种数字。
+        const pct = (p && p.total > 0) ? Math.max(0, Math.min(100, Math.round(p.loaded / p.total * 100))) : null;
+        const txt = '模型加载中' + (pct != null ? ' ' + pct + '%' : (p && p.loaded ? '（' + (p.loaded / 1048576).toFixed(1) + ' MB）' : '…'))
+          + '：' + preset.name;
+        if (MODE === 'palm') hud.textContent = txt; else setSt(txt, true);
+      },
+         (e) => {
+           if (MODE === 'table') setSt('模型加载失败：' + ((e && e.message) || e) + '（检查网络后刷新）', true);
+           else hud.textContent = '❌ 模型加载失败: ' + ((e && e.message) || e);
+         });
+    }
+
+    const modelSel = document.getElementById('modelSel');
+    Object.entries(MODELS).forEach(([id, m]) => { const o = document.createElement('option'); o.value = id; o.textContent = m.name; modelSel.appendChild(o); });
+    const savedModel = (() => { try { return localStorage.getItem('longmaModelV2'); } catch (e) { return null; } })();
+    modelSel.value = MODELS[savedModel] ? savedModel : 'longma';
+    function ensureCustomOption(name) {
+      let o = modelSel.querySelector('option[value="__custom__"]');
+      if (!o) { o = document.createElement('option'); o.value = '__custom__'; modelSel.appendChild(o); }
+      o.textContent = '自定义：' + name;
+      return o;
+    }
+    modelSel.addEventListener('change', () => {
+      try { localStorage.setItem('longmaModelV2', modelSel.value); } catch (e) {}
+      document.getElementById('customRow').style.display = (modelSel.value === '__custom__') ? 'flex' : 'none';
+      loadModel(modelSel.value);
+    });
+
+    // 导入用户模型（单文件 .glb；与内置模型走同一条归一化/落地/轴系管线）
+    function importFile(file) {
+      if (!/\.glb$/i.test(file.name)) { alert('请选择单文件 .glb 模型（.gltf 的外置 bin/贴图在网页里取不到）'); return; }
+      if (!(file.size > 0)) { alert('文件为空'); return; }
+      if (customPreset && customPreset.url && customPreset.url.startsWith('blob:')) URL.revokeObjectURL(customPreset.url);
+      customPreset = { name: file.name, url: URL.createObjectURL(file), up: [0, 1, 0], head: [-1, 0, 0], custom: true };
+      customExtra.identity();
+      ensureCustomOption(file.name);
+      modelSel.value = '__custom__';
+      document.getElementById('customRow').style.display = 'flex';
+      loadModel('__custom__');
+    }
+    const fileInput = document.getElementById('fileModel');
+    ['importStart', 'importPanel'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.addEventListener('click', ev => { ev.stopPropagation(); fileInput.click(); });
+    });
+    fileInput.addEventListener('change', () => { const f = fileInput.files && fileInput.files[0]; if (f) importFile(f); fileInput.value = ''; });
+    document.querySelectorAll('#customRow [data-rot]').forEach(btn => btn.addEventListener('click', ev => {
+      ev.stopPropagation();
+      const r = btn.dataset.rot;
+      if (r === 'reset') customExtra.identity();
+      else {
+        const axis = r === 'x' ? new THREE.Vector3(1, 0, 0) : r === 'y' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+        customExtra.multiply(new THREE.Quaternion().setFromAxisAngle(axis, r === 'y' ? Math.PI : Math.PI / 2));
+      }
+      if (modelSel.value === '__custom__') loadModel('__custom__');
+    }));
+    // 离线自检：用现成 URL 走一遍"导入"流程
+    window.__importURL = (url, name) => {
+      customPreset = { name: name || 'imported.glb', url, up: [0, 1, 0], head: [-1, 0, 0], custom: true };
+      customExtra.identity();
+      ensureCustomOption(customPreset.name);
+      modelSel.value = '__custom__';
+      document.getElementById('customRow').style.display = 'flex';
+      loadModel('__custom__');
+    };
+
+    // ================= 掌心模式 =================
+    const sScale = document.getElementById('sScale');
+    const HS_CN = { Right: '右手', Left: '左手' };
+    const ls = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+    const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+    const HS_PAGE = { Right: -HS_DEFAULT.Right, Left: -HS_DEFAULT.Left };   // 真机实测口径：两只手都取反
+    let HS = Object.assign({}, HS_PAGE);
+    for (const k of ['Right', 'Left']) { const v = +ls('hsSign_' + k, HS_PAGE[k]); if (v === 1 || v === -1) HS[k] = v; }
+    let curHand = null, handPresent = false, prevNormal = null;
+    let mirrorOn = ls('mirrorOn', '0') === '1';      // 实测：前置链路不做水平镜像
+    let showAxes = ls('showAxes', '0') === '1';
+    let yawDeg = 0, pitchDeg = 0, rollDeg = 270, moveTarget = null, created = false;
+
+    const btnMirror = document.getElementById('btnMirror'), btnAxes = document.getElementById('btnAxes');
+    const paintBtn = () => { btnMirror.style.opacity = mirrorOn ? 1 : .45; btnAxes.style.opacity = showAxes ? 1 : .45; };
+    paintBtn();
+    btnMirror.addEventListener('click', ev => {
+      ev.stopPropagation();
+      mirrorOn = !mirrorOn; save('mirrorOn', mirrorOn ? '1' : '0'); paintBtn(); prevNormal = null;
+      hud.textContent = '朝向镜像修正：' + (mirrorOn ? '开（跟随镜像后的画面）' : '关（按原始帧）') + ' · 已记住本机选择';
+    });
+    btnAxes.addEventListener('click', ev => { ev.stopPropagation(); showAxes = !showAxes; save('showAxes', showAxes ? '1' : '0'); paintBtn(); });
+    [{ id: 'sYaw', set: v => yawDeg = v }, { id: 'sPitch', set: v => pitchDeg = v }, { id: 'sRoll', set: v => rollDeg = v }].forEach(o => {
+      const el = document.getElementById(o.id);
+      el.value = ls(o.id, el.value); o.set(+el.value);
+      el.addEventListener('input', e => { o.set(+e.target.value); save(o.id, e.target.value); });
+    });
+    sScale.addEventListener('input', e => {});
+    document.getElementById('btnFlip').addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (!curHand) { hud.textContent = '先伸出手掌，让页面认出左手/右手，再点"翻转这只手"'; return; }
+      HS[curHand] = -(HS[curHand] || 1); save('hsSign_' + curHand, HS[curHand]); prevNormal = null;
+      hud.textContent = '已翻转' + HS_CN[curHand] + '的掌心朝向（本机记住）· 再点一次可翻回来';
+    });
+
+    // 手势 → 功能
+    // 指令表（王子涵提供）：02 立正 / 03 前进 / 04 撤退 / 05 握手 / 09 跳舞 /
+    //   0A 趴下 / 0B 蹲下 / 0C 摇尾巴 / 0F 呼吸灯 / 10 充能 / 11 关灯。
+    //   唱歌、科普是语音芯片自身功能（不经 MCU/蓝牙），所以换成蓝牙可控的“前进”“呼吸灯”。
+    //   绝对不要发 0x71（会关掉蓝牙）。
+    const FN = {
+      'Pointing_Up': { key: 'dance', name: '跳舞',   byte: 0x09 },
+      'Victory':     { key: 'walk',  name: '前进',   byte: 0x03 },
+      'Closed_Fist': { key: 'light', name: '呼吸灯', byte: 0x0F }
+    };
+    try {
+      Object.values(FN).forEach(f => {
+        const v = localStorage.getItem('fn' + f.key);
+        // 只接受非空的已存值；空串视为"没设过"，保留内置默认（跳舞 0x09）。
+        // 旧页面与合并页同源，localStorage 共用，之前清空过的字段会把默认值覆盖成空。
+        if (v) { const n = parseInt(v, 16); if (Number.isFinite(n)) f.byte = n; }
+      });
+    } catch (e) {}
+    let fnHold = 0, fnName = '';
+
+    // 蓝牙
+    const bt = new BleClient((t, ok) => { btEl.textContent = '蓝牙：' + t; btEl.classList.toggle('on', !!ok); });
+    bt.wantNotify = false;   // 本页以“已发送 + 看实物动作”为准，不订阅回读
+    btEl.addEventListener('click', () => bt.connect());
+    document.getElementById('goBT').addEventListener('click', async () => { if (await bt.connect()) document.getElementById('goBT').style.display = 'none'; });
+    window.__bt = () => bt.info(); window.__ble = bt;
+    // 发送即判定：设备是否执行看“龙马有没有动作”，不再依赖回显/Notify
+    let fnSeq = 0;
+    async function showFn(fn) {
+      fnEl.style.display = 'block';
+      if (fn.byte == null) {
+        fnEl.textContent = '⚠️ 未发送：' + fn.name + '还没有指令字节（只屏显）。' + (fn.key === 'dance' ? '跳舞默认是 0x09，' : '') + '请在上方“手势动作”里填入后点“发送”。';
+        const inp = document.querySelector('.bcmd[data-key="' + fn.key + '"]');
+        if (inp) { inp.focus(); inp.style.borderColor = 'var(--warn)'; setTimeout(() => { inp.style.borderColor = ''; }, 2500); }
+        return;
+      }
+      const my = ++fnSeq;
+      const ok = await bt.writeByte(fn.byte);
+      if (my !== fnSeq) return;
+      fnEl.textContent = ok
+        ? '✅ 已发送 ' + hex(fn.byte) + '（' + fn.name + '）· 看龙马是否动作确认通信'
+        : '⚠️ 未发送 ' + hex(fn.byte) + '（' + fn.name + '）· 蓝牙没连上';
+    }
+
+    // 自检
+    const row = (k, v, cls) => '<span class="' + (cls || '') + '">' + k + '：' + v + '</span>\n';
+    function verdict(d) {
+      const out = [];
+      const push = (cls, t) => out.push('<span class="' + cls + '">· ' + t + '</span>');
+      if (!d['本浏览器支持']) push('bad', '这个浏览器没有 Web Bluetooth（夸克、各类 App 内嵌 WebView 都不行）→ 换 Edge 或 Chrome。');
+      else if (!d['已连接']) push('bad', '还没连上 BT24 → 点右上角"蓝牙"，在弹窗里选 BT24；列表里没有＝模块没在广播或被别的设备连着（BT24 只允许一条连接）。');
+      else if (!d['特征能力'].includes('write')) push('bad', '这条特征不可写 → 指令发不出去，换 0xFFE1 或重连。');
+      else push('ok', '可写特征就绪 → 发送后看龙马是否动作，即可判断通信是否成功（本版不依赖回显）。');
+      push('warn', '测手机前：电脑上那个蓝牙页面必须彻底关掉。BT24 一次只允许一条连接，两边抢连会出现"写进去没回读"这种半死状态。');
+      return out.join('\n');
+    }
+    async function runDiag() {
+      diagEl.style.display = 'block';
+      diagEl.textContent = '自检中…（读模块的 CCC 要 1 秒左右）';
+      const d = await bt.diag();
+      let h = row('本页版本', VER + '　' + location.host + location.pathname) + row('UA', navigator.userAgent);
+      h += '\n—— 蓝牙 ——\n';
+      for (const k of Object.keys(d)) h += row(k, d[k]);
+      h += '\n—— 串口桥 ——\n';
+      for (const api of ['/rx.json', 'http://127.0.0.1:8790/rx.json']) {
+        try {
+          const r = await fetch(api, { cache: 'no-store' });
+          const t = await r.json();
+          h += row('桥 ' + api, r.status === 200 && t.ok !== false
+            ? '在线 · 空中到电脑 ' + (t.ble || []).length + ' 字节 · 心跳 ' + (t.hb == null ? '?' : t.hb)
+            : '通了但没连上串口：' + (t.err || '未连'), r.status === 200 && t.ok !== false ? '' : 'warn');
+        } catch (e) { h += row('桥 ' + api, '取不到（' + e.name + '）→ 手机只能靠 Notify', 'warn'); }
+      }
+      diagEl.innerHTML = h + '\n—— 判读 ——\n' + verdict(d) + '\n（点此处关闭）';
+    }
+    diagEl.addEventListener('click', () => { diagEl.style.display = 'none'; });
+    document.getElementById('btnDiag').addEventListener('click', ev => { ev.stopPropagation(); runDiag(); });
+    document.getElementById('goDiag').addEventListener('click', runDiag);
+    window.__diag = runDiag;
+
+    // ---- 指令列表（蓝牙可控）＋自定义 ----
+    const CMDS = [
+      { b: 0x02, name: '立正' }, { b: 0x03, name: '前进' }, { b: 0x04, name: '撤退' },
+      { b: 0x05, name: '握手' }, { b: 0x09, name: '跳舞' }, { b: 0x0A, name: '趴下' },
+      { b: 0x0B, name: '蹲下' }, { b: 0x0C, name: '摇尾巴' }, { b: 0x0F, name: '呼吸灯' },
+      { b: 0x10, name: '充能' }, { b: 0x11, name: '关灯' }
+    ];
+    let customCmds = [];
+    try { customCmds = (JSON.parse(localStorage.getItem('cmdsCustomV1') || '[]') || []).map(c => ({ ...c, custom: true })); } catch (e) { customCmds = []; }
+    const cmdList = document.getElementById('cmdList');
+    const saveCmds = () => { try { localStorage.setItem('cmdsCustomV1', JSON.stringify(customCmds.map(({ name, b }) => ({ name, b })))); } catch (e) {} };
+    function renderCmds() {
+      cmdList.replaceChildren();
+      for (const c of CMDS.concat(customCmds)) {
+        const chip = document.createElement('button');
+        chip.type = 'button'; chip.className = 'cmdchip';
+        chip.appendChild(document.createTextNode(c.name));
+        const code = document.createElement('small');
+        code.textContent = '0x' + c.b.toString(16).toUpperCase().padStart(2, '0');
+        chip.appendChild(code);
+        if (c.custom) {
+          const x = document.createElement('span'); x.className = 'x'; x.textContent = '×';
+          x.addEventListener('click', ev => {
+            ev.stopPropagation();
+            if (confirm('删除“' + c.name + '”？')) { customCmds = customCmds.filter(k => k !== c); saveCmds(); renderCmds(); }
+          });
+          chip.appendChild(x);
+        }
+        chip.addEventListener('click', ev => { ev.stopPropagation(); showFn({ name: c.name, byte: c.b, key: 'cmd' }); });
+        cmdList.appendChild(chip);
+      }
+    }
+    document.getElementById('cmdAdd').addEventListener('click', ev => {
+      ev.stopPropagation();
+      const name = (prompt('功能名称（如：作揖）') || '').trim();
+      if (!name) return;
+      const hex = (prompt('指令字节（十六进制 1–2 位，如 0D）') || '').replace(/[^0-9a-fA-F]/g, '');
+      const n = parseInt(hex, 16);
+      if (!hex || !Number.isFinite(n) || n > 255) { alert('不是有效的十六进制字节'); return; }
+      if (n === 0x71) { alert('0x71 会关掉蓝牙，不能加入'); return; }
+      customCmds.push({ name: name.slice(0, 8), b: n, custom: true });
+      saveCmds(); renderCmds();
+    });
+    renderCmds();
+
+    const FN_BY_KEY = {}; Object.values(FN).forEach(f => { FN_BY_KEY[f.key] = f; });
+    const toHex = b => b.toString(16).toUpperCase().padStart(2, '0');
+    document.querySelectorAll('.bcmd').forEach(inp => {
+      const f = FN_BY_KEY[inp.dataset.key];
+      if (!f) return;
+      inp.value = f.byte == null ? '' : toHex(f.byte);
+      inp.addEventListener('change', () => {
+        const h = inp.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 2);
+        if (!h) { f.byte = null; }
+        else {
+          const b = parseInt(h, 16);
+          if (b === 0x71) { btEl.textContent = '蓝牙：0x71 会关掉蓝牙，已拒绝填入'; inp.value = f.byte == null ? '' : toHex(f.byte); return; }
+          f.byte = b;
+        }
+        inp.value = f.byte == null ? '' : toHex(f.byte);
+        try { localStorage.setItem('fn' + f.key, f.byte == null ? '' : toHex(f.byte)); } catch (e) {}
+      });
+    });
+    document.querySelectorAll('.bsend').forEach(btn => { if (btn.dataset.key) btn.addEventListener('click', ev => { ev.stopPropagation(); showFn(FN_BY_KEY[btn.dataset.key]); }); });
+
+    function screenToWorld(nx, ny) {
+      const h = Math.tan(60 / 2 * Math.PI / 180), w = h * camera.aspect;
+      return new THREE.Vector3((nx * 2 - 1) * w, (1 - ny * 2) * h, 0);
+    }
+    const smoothPos = new THREE.Vector3(); let haveSmooth = false;
+
+    async function startPalm(stream) {
+      const my = session;
+      const video = document.getElementById('v');
+      camera.position.set(0, 0, 1); camera.lookAt(0, 0, 0); camera.fov = 60; camera.updateProjectionMatrix();
+      hud.textContent = '加载手势模型…（' + (window.__cam || '摄像头') + '）';
+      // 手势运行时从公共 CDN 取：jsDelivr 不通就换 unpkg；两边都失败就把原因写在屏上，不再静默
+      const BASES = ['https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14', 'https://unpkg.com/@mediapipe/tasks-vision@0.10.14'];
+      const modelPath = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
+      let gr = null, lastErr = null;
+      for (const base of BASES) {
+        try {
+          const { GestureRecognizer, FilesetResolver } = await import(base);
+          const vision = await FilesetResolver.forVisionTasks(base + '/wasm');
+          try { gr = await GestureRecognizer.createFromOptions(vision, { baseOptions: { modelAssetPath: modelPath, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: 1 }); }
+          catch (e) { gr = await GestureRecognizer.createFromOptions(vision, { baseOptions: { modelAssetPath: modelPath }, runningMode: 'VIDEO', numHands: 1 }); }
+          break;
+        } catch (e) { lastErr = e; }
+      }
+      if (!gr) {
+        hud.textContent = '❌ 手势模型加载失败：' + ((lastErr && (lastErr.name + ' ' + lastErr.message)) || '未知错误')
+          + ' · 检查网络/加速器是否拦了 cdn.jsdelivr.net 与 storage.googleapis.com';
+        return;
+      }
+      if (my !== session) { try { gr.close(); } catch (e) {} return; }
+      stopMode = () => { try { gr.close(); } catch (e) {} };
+      hud.textContent = '张开五指，让龙马站到掌心（' + (window.__cam || '摄像头') + '）';
+      let lastT = -1;
+      (function loop() {
+        if (my !== session) return;
+        requestAnimationFrame(loop);
+        const now = performance.now();
+        if (video.readyState < 2 || video.currentTime === lastT) { renderer.render(scene, camera); return; }
+        lastT = video.currentTime;
+        let res = null; try { res = gr.recognizeForVideo(video, now); } catch (e) {}
+        handPresent = !!(res && res.landmarks && res.landmarks[0]);
+        renderer.render(scene, camera);
+        if (!res || !modelReady) {
+          const gc = res && res.gestures && res.gestures[0] && res.gestures[0][0];
+          hud.textContent = '诊断 res=' + (!!res) + ' 模型=' + (modelReady ? '就绪' : '加载中') + ' 手势=' + (gc ? gc.categoryName : '无') + ' 手=' + (handPresent ? 1 : 0);
+          return;
+        }
+        const hand = res.landmarks && res.landmarks[0];
+        const g = res.gestures && res.gestures[0] && res.gestures[0][0];
+        const cat = g ? g.categoryName : '';
+        const open = cat === 'Open_Palm' && g && g.score > 0.4;
+        const fn = FN[cat];
+        if (fn) { fnHold++; if (fnHold >= 2 && fnName !== fn.name) { fnName = fn.name; showFn(fn); } }
+        else { fnHold = 0; fnName = ''; fnEl.style.display = 'none'; }
+
+        if (open && hand) {
+          axGrp.visible = false;
+          created = true; moveTarget = null;
+          const cx = (hand[0].x + hand[9].x) / 2, cy = (hand[0].y + hand[9].y) / 2;
+          const palm = Math.hypot(hand[9].x - hand[0].x, hand[9].y - hand[0].y);
+          const wp = screenToWorld(1 - cx, cy);
+          if (!haveSmooth) { smoothPos.copy(wp); haveSmooth = true; } else smoothPos.lerp(wp, 0.5);
+          const scale = baseScale * palm * 1.4;
+          if (Number.isFinite(scale) && scale > 1e-6) horse.scale.setScalar(scale * (+sScale.value));
+          horse.position.copy(smoothPos);
+          const wl = (res.worldLandmarks && res.worldLandmarks[0]) || hand;
+          const hn = (res.handednesses && res.handednesses[0] && res.handednesses[0][0] && res.handednesses[0][0].categoryName)
+                  || (res.handedness && res.handedness[0] && res.handedness[0][0] && res.handedness[0][0].categoryName) || null;
+          if (hn) curHand = hn;
+          const f = palmBasis(mirrorOn ? toDisplay(wl) : wl, hn, HS, prevNormal);
+          if (f) {
+            prevNormal = f.n;
+            const V = a => new THREE.Vector3(a[0], a[1], a[2]);
+            const qb = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(V(f.x), V(f.y), V(f.z)));
+            const q = qb.clone();
+            const off = new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(rollDeg), THREE.MathUtils.degToRad(yawDeg), THREE.MathUtils.degToRad(pitchDeg)));
+            q.multiply(off);
+            if (Number.isFinite(q.x) && Number.isFinite(q.y) && Number.isFinite(q.z) && Number.isFinite(q.w)) horse.quaternion.slerp(q, 0.6);
+            axGrp.position.copy(horse.position); axGrp.quaternion.copy(qb); axGrp.visible = showAxes;
+          }
+          horse.visible = true;
+          hud.textContent = '① 手掌跟随 · 手势 ' + cat + ' (' + Math.round((g.score || 0) * 100) + '%) · ' + (HS_CN[curHand] || '手别未识别') + ' · 镜像' + (mirrorOn ? '开' : '关');
+        } else if (created) {
+          if (moveTarget) smoothPos.lerp(moveTarget, 0.35);
+          horse.position.copy(smoothPos); horse.visible = true;
+          if (moveTarget) {
+            const tv = new THREE.Vector3().subVectors(moveTarget, smoothPos);
+            if (tv.length() > 0.02) {
+              tv.y = 0; tv.normalize();
+              const Xw = tv.clone().negate(), Yw = new THREE.Vector3(0, 1, 0), Zw = new THREE.Vector3().crossVectors(Xw, Yw).normalize();
+              horse.quaternion.slerp(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(Xw, Yw, Zw)), 0.3);
+            }
+          }
+          hud.textContent = fn ? ('③ 已触发 «' + fn.name + '» ' + (fn.byte != null ? hex(fn.byte) : '字节待确认') + '（不跟随）')
+                              : (cat ? ('手势 ' + cat + '（不跟随）· 可点屏幕移动') : '② 手不在画面里 · 龙马停在原地，先伸出手掌再点屏幕');
+        } else {
+          horse.visible = false;
+          hud.textContent = cat ? ('手势 ' + cat + ' — 张开手掌召出龙马') : '张开手掌，让龙马出现';
+        }
+      })();
+    }
+
+    // ================= 桌面模式（四角标定 + 透视相机） =================
+    let H = null, Hinv = null, pose = null, cur = { x: 0, z: 0 }, tgt = null;
+    let tableSpeed = 0.3, tableSize = 0.3;
+    document.getElementById('sSpeed').addEventListener('input', e => tableSpeed = +e.target.value);
+    document.getElementById('sSize').addEventListener('input', e => tableSize = +e.target.value);
+
+    let corners = [[0.2, 0.35], [0.8, 0.35], [0.85, 0.8], [0.15, 0.8]], drag = -1;
+    function renderCorners() {
+      const W = innerWidth, Hh = innerHeight, px = corners.map(c => [c[0] * W, c[1] * Hh]);
+      document.getElementById('quad').setAttribute('points', px.map(p => p.join(',')).join(' '));
+      px.forEach((p, i) => { const e = document.getElementById('c' + i); e.style.left = p[0] + 'px'; e.style.top = p[1] + 'px'; });
+    }
+    function resetCorners() { corners = [[0.2, 0.35], [0.8, 0.35], [0.85, 0.8], [0.15, 0.8]]; renderCorners(); }
+    const calib = document.getElementById('calib');
+    calib.addEventListener('pointerdown', e => { const id = e.target.id; if (id && id[0] === 'c') drag = +id[1]; });
+    window.addEventListener('pointermove', e => { if (drag < 0) return; corners[drag] = [e.clientX / innerWidth, e.clientY / innerHeight]; renderCorners(); });
+    window.addEventListener('pointerup', () => drag = -1);
+    window.addEventListener('resize', renderCorners);
+    document.getElementById('recal').addEventListener('click', () => {
+      calib.classList.remove('hidden');
+      H = null; pose = null; horse.visible = false; ring.visible = false;
+      modeEl.textContent = '① 拖四角 ② 填宽深 ③ 点标定';
+      setSt('未标定 · 龙马暂不显示', true); resetCorners();
+    });
+
+    function applyPose(p) {
+      const m = new THREE.Matrix4().set(
+        p.R[0], p.R[1], p.R[2], 0,
+        p.R[3], p.R[4], p.R[5], 0,
+        p.R[6], p.R[7], p.R[8], 0,
+        0, 0, 0, 1);
+      m.transpose().multiply(new THREE.Matrix4().makeScale(1, -1, -1));
+      camera.quaternion.setFromRotationMatrix(m);
+      camera.position.set(p.C[0], p.C[1], p.C[2]);
+      camera.fov = 2 * Math.atan((innerHeight / 2) / p.f) * 180 / Math.PI;
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+    }
+    function reprojectErrorPx() {
+      let worst = 0;
+      rectCorners(Wm(), Dm()).forEach((p, i) => {
+        const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera);
+        const u = (v.x * 0.5 + 0.5) * innerWidth, vv = (-v.y * 0.5 + 0.5) * innerHeight;
+        worst = Math.max(worst, Math.hypot(u - corners[i][0] * innerWidth, vv - corners[i][1] * innerHeight));
+      });
+      return worst;
+    }
+    document.getElementById('cal').addEventListener('click', () => {
+      const w = Wm(), d = Dm();
+      if (!(w > 0 && d > 0)) { alert('填有效的宽/深（米）'); return; }
+      const src = rectCorners(w, d).map(p => [p[0], p[2]]);
+      const dst = corners.map(c => [c[0] * innerWidth, c[1] * innerHeight]);
+      const h = homography(src, dst);
+      if (!h) { alert('四点退化（共线或重合），请重拖'); return; }
+      const p = poseFromHomography(h, innerWidth, innerHeight, 60);
+      if (!p.ok) { alert('标定失败：' + (p.why || '位姿解不出')); return; }
+      H = h; Hinv = inv3(h); pose = p;
+      cur = { x: 0, z: 0 }; tgt = null;
+      calib.classList.add('hidden');
+      document.getElementById('panel').style.display = 'block';
+      modeEl.textContent = '已标定';
+      applyPose(p);
+      const err = reprojectErrorPx();
+      const cc = new THREE.Vector3(0, 0, 0).project(camera);
+      const cu = (cc.x * 0.5 + 0.5) * innerWidth, cv = (-cc.y * 0.5 + 0.5) * innerHeight;
+      const onScreen = cu > 0 && cu < innerWidth && cv > 0 && cv < innerHeight;
+      if (p.approx) setSt('已标定（近似）· 四点不像同一矩形的透视，视场按默认值；若透视不对请重拖四角', true);
+      else setSt('已标定 · 四角复投误差 ' + err.toFixed(2) + ' 像素 · 模型中心屏位 (' + Math.round(cu) + ',' + Math.round(cv) + ')'
+        + (onScreen ? '' : ' ⚠ 不在画面内，请重标') + ' · 点桌面让龙马走', err > 3 || !onScreen);
+    });
+
+    function startTable() {
+      const my = session;
+      document.getElementById('panel').style.display = 'block';
+      calib.classList.remove('hidden');
+      modeEl.textContent = '① 拖四角 ② 填宽深 ③ 点标定';
+      resetCorners();
+      layoutOverlays();
+      setSt('模型已就绪 · 尚未标定 → ① 拖四角 ② 填宽深 ③ 点“标定”', true);
+      let last = 0;
+      (function loop(ts) {
+        if (my !== session) return;
+        requestAnimationFrame(loop);
+        const dt = last ? Math.min((ts - last) / 1000, 0.05) : 0; last = ts;
+        if (tgt && H) {
+          const dx = tgt.x - cur.x, dz = tgt.z - cur.z, dist = Math.hypot(dx, dz);
+          if (dist < 0.005) { tgt = null; }
+          else { const st = Math.min(tableSpeed * dt, dist) / dist; cur.x += dx * st; cur.z += dz * st; }
+        }
+        if (H && modelReady) {
+          horse.visible = true;
+          horse.position.set(cur.x, 0, cur.z);
+          horse.scale.setScalar(tableSize * baseScale);   // 子模型是原始尺寸，baseScale=1/模型高
+          if (tgt) horse.rotation.y = Math.atan2(tgt.z - cur.z, -(tgt.x - cur.x));   // 头=局部 -X
+          ring.position.set(cur.x, 0.002, cur.z); ring.visible = true;
+        }
+        renderer.render(scene, camera);
+      })(0);
+    }
+
+    // ---------- 点击：掌心（有限制）/ 桌面（逆单应） ----------
+    window.addEventListener('pointerdown', ev => {
+      if (ev.target && ev.target.closest && ev.target.closest('#panel,#hud,#start,#bt,#diag,#bar,#calib,#back')) return;
+      if (MODE === 'palm') {
+        if (!handPresent) { hud.textContent = '画面里还没有手 · 先张开手掌把龙马召出来，再点屏幕让它走'; return; }
+        const r = renderer.domElement.getBoundingClientRect();
+        const nx = (ev.clientX - r.left) / r.width, ny = (ev.clientY - r.top) / r.height;
+        moveTarget = screenToWorld(nx, ny);
+        hud.textContent = '已设目标点 (' + nx.toFixed(2) + ',' + ny.toFixed(2) + ')，龙马走过去…';
+      } else {
+        if (!H || !Hinv) return;
+        const [x, z] = applyH(Hinv, ev.clientX, ev.clientY);
+        if (Number.isFinite(x) && Number.isFinite(z)) tgt = { x, z };
+      }
+    });
+
+    // ---------- 返回主页面 ----------
+    const backBtn = document.getElementById('back');
+    let session = 0;       // 每次进入模式 / 返回主页都 +1：旧动画循环发现号码变了就自行退出
+    let stopMode = null;   // 模式内需要主动释放的资源（手势识别器）
+
+    function goHome() {
+      session++;
+      if (stopMode) { try { stopMode(); } catch (e) {} stopMode = null; }
+      const video = document.getElementById('v');
+      const stream = video.srcObject;
+      if (stream && stream.getTracks) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+      try { video.pause(); } catch (e) {}
+      video.srcObject = null;
+      // 桌面标定位姿作废，下次进入重新标定
+      H = null; Hinv = null; pose = null; tgt = null; cur = { x: 0, z: 0 };
+      // 掌心状态复位，下次进入要重新张掌召出
+      created = false; haveSmooth = false; handPresent = false; moveTarget = null;
+      horse.visible = false; ring.visible = false; axGrp.visible = false;
+      // 叠层全部收起
+      document.getElementById('panel').style.display = 'none';
+      fnEl.style.display = 'none';
+      diagEl.style.display = 'none';
+      calib.classList.add('hidden');
+      hud.textContent = '正在加载…';
+      document.body.classList.remove('table');
+      backBtn.style.display = 'none';
+      const startEl = document.getElementById('start');
+      startEl.style.display = '';
+      startEl.scrollTop = 0;
+      layoutOverlays();
+    }
+    backBtn.addEventListener('click', ev => { ev.stopPropagation(); goHome(); });
+
+    // ---------- 启动 ----------
+    async function start(mode, btn) {
+      MODE = mode;
+      document.body.classList.toggle('table', mode === 'table');
+      backBtn.style.display = 'flex';
+      const my = ++session;
+      setCollapsed(ls('panelCollapsed_' + mode, '1') === '1');
+      layoutOverlays();
+      const mc = document.getElementById('modeChip'); if (mc) mc.textContent = (mode === 'table') ? '桌面' : '掌心';
+      // 摄像头：下拉里明确选了设备就尊重；否则按模式用 facingMode（掌心前置、桌面后置），
+      // 不再依赖 enumerateDevices 的顺序（手机在授权前拿不到标签，顺序常常是后置在前）。
+      let stream;
+      const picked = (sel.value && sel.value !== AUTO) ? { deviceId: { exact: sel.value } } : { facingMode: (mode === 'palm') ? 'user' : 'environment' };
+      try { stream = await origGum({ video: picked }); }
+      catch (e) {
+        alert('摄像头失败 ' + e.name + '（' + (e.message || '') + '）');
+        goHome(); return;
+      }
+      if (my !== session) { stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} }); return; }
+      chosenDevice = null;
+      const video = document.getElementById('v'); video.srcObject = stream; await video.play().catch(() => {});
+      const camLabel = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].label) || '未知摄像头';
+      window.__cam = camLabel;
+      document.getElementById('start').style.display = 'none';
+      document.getElementById('panel').style.display = 'block';
+      layoutOverlays();
+      loadModel(modelSel.value);
+      if (mode === 'palm') { await startPalm(stream); }
+      else { startTable(); }
+    }
+    document.getElementById('goPalm').addEventListener('click', ev => start('palm', ev.target));
+    document.getElementById('goTable').addEventListener('click', ev => start('table', ev.target));
+
+    // 底部面板高度不定：回读窗与提示条跟着上移，避免互相压住
+    function layoutOverlays() {
+      const p = document.getElementById('panel');
+      const base = (p && getComputedStyle(p).display !== 'none') ? p.offsetHeight + 24 : 12;
+      fnEl.style.bottom = (base + 14) + 'px';
+      const bar = document.getElementById('bar');
+      if (bar && getComputedStyle(bar).display !== 'none') stEl.style.top = (bar.offsetHeight + 24) + 'px';
+    }
+    addEventListener('resize', layoutOverlays);
+    layoutOverlays();
+
+    const bindOut = (id, out, fmt) => {
+      const el = document.getElementById(id), o = document.getElementById(out);
+      const f = () => { if (o) o.textContent = fmt(+el.value); };
+      el.addEventListener('input', f); f();
+    };
+    bindOut('sScale', 'oSScale', v => v.toFixed(2) + '×');
+    bindOut('sYaw', 'oSYaw', v => v + '°');
+    bindOut('sPitch', 'oSPitch', v => v + '°');
+    bindOut('sRoll', 'oSRoll', v => v + '°');
+    bindOut('sSize', 'oSSize', v => v.toFixed(2) + ' m');
+    bindOut('sSpeed', 'oSSpeed', v => v.toFixed(2) + ' m/s');
+
+    // 面板收起/展开（按模式记住；默认收起，让画面干净）
+    const panelEl = document.getElementById('panel'), collapseBtn = document.getElementById('collapse');
+    function setCollapsed(c) {
+      panelEl.classList.toggle('collapsed', !!c);
+      collapseBtn.textContent = c ? '展开' : '收起';
+      collapseBtn.setAttribute('aria-expanded', c ? 'false' : 'true');
+      try { localStorage.setItem('panelCollapsed_' + MODE, c ? '1' : '0'); } catch (e) {}
+      layoutOverlays();
+    }
+    collapseBtn.addEventListener('click', ev => { ev.stopPropagation(); setCollapsed(!panelEl.classList.contains('collapsed')); });
+    const savedCollapsed = ls('panelCollapsed_palm', '1') === '1';
+    setCollapsed(savedCollapsed);
+
+    // 设计预览：?ui=palm / ?ui=table 直接展开面板（不开摄像头，便于评审视觉与截图）
+    {
+      const uiPrev = new URLSearchParams(location.search).get('ui');
+      if (uiPrev === 'palm' || uiPrev === 'table') {
+        MODE = uiPrev;
+        document.body.classList.toggle('table', MODE === 'table');
+        document.getElementById('start').style.display = 'none';
+        backBtn.style.display = 'flex';
+        panelEl.style.display = 'block';
+        document.getElementById('modeChip').textContent = (MODE === 'table') ? '桌面' : '掌心';
+        loadModel(modelSel.value);
+        setCollapsed(false);
+        if (MODE === 'table') {
+          setSt('模型已就绪 · 尚未标定 → ① 拖四角 ② 填宽深 ③ 点“标定”', true);
+          document.getElementById('mode').textContent = '① 拖四角 ② 填宽深 ③ 点标定';
+        } else {
+          hud.textContent = '张开五指，让龙马站到掌心';
+        }
+        layoutOverlays();
+      }
+    }
+
+    const reportErr = (msg) => {
+      if (MODE === 'table') setSt('❌ ' + msg, true);
+      else hud.textContent = '❌ ' + msg;
+    };
+    addEventListener('unhandledrejection', e => {
+      const r = e.reason || {};
+      reportErr('运行错误：' + (r.name || '') + ' ' + (r.message || r));
+    });
+    addEventListener('error', e => { if (e && e.message) reportErr('脚本错误：' + e.message); });
+
+    window.__fn = () => Object.fromEntries(Object.values(FN).map(f => [f.key, f.byte]));
+    window.__horse = horse;
+    window.__loadModel = loadModel;
+    window.__setMode = m => { MODE = m; document.body.classList.toggle('table', m === 'table'); };   // 离线自检用
+    window.__model = () => ({
+      mode: MODE, id: curModelId, ready: modelReady,
+      info: window.__modelInfo || null,
+      bbox: (() => { const b = new THREE.Box3(); horse.traverse(o => { if (o.isMesh && o.visible && o.geometry && o.geometry.attributes.position) { o.geometry.computeBoundingBox(); b.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } }); if (b.isEmpty()) return null; const v = new THREE.Vector3(); b.getSize(v); return { size: v.toArray().map(x => +x.toFixed(2)), minY: +b.min.y.toFixed(3) }; })()
+    });
+  </script>
+</body>
+</html>

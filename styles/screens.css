@@ -1,0 +1,332 @@
+/* ==========================================================================
+   龙马 · AR 运行时叠层
+   与改版前保持同一套选择器与显隐契约：
+     #hud 状态条 / #fn 触发回读 / #panel 控制面板 / #bar 标定条 / #st 状态行
+     #calib 四角标定 / #diag 自检终端 / body.table 模式显隐
+   JS 会写内联 display / opacity / left / top，故此处不使用 !important。
+   ========================================================================== */
+
+@layer screens {
+
+  /* ---------- 状态条 ---------- */
+  #hud {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    right: auto;
+    z-index: 9;
+    max-width: min(calc(100vw - 100px), 520px);
+    padding: 9px 13px;
+    border: 1px solid var(--line-2);
+    border-left: 2px solid var(--jade);
+    border-radius: var(--r-s);
+    background: var(--panel);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    box-shadow: var(--shadow-1);
+    color: var(--jade);
+    font-size: 12.5px;
+    line-height: 1.5;
+    letter-spacing: .02em;
+  }
+
+  /* ---------- 触发回读 ---------- */
+  #fn {
+    position: fixed;
+    left: 50%;
+    bottom: 96px;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: none;
+    max-width: min(92vw, 560px);
+    padding: 12px 18px;
+    border: 1px solid var(--jade-line);
+    border-radius: var(--r-m);
+    background: var(--panel);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-2);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.55;
+    letter-spacing: .02em;
+    text-align: center;
+  }
+
+  /* ---------- 蓝牙状态 ---------- */
+  #bt {
+    position: relative;
+    max-width: 46vw;
+    padding-left: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  #bt::before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 50%;
+    background: #6b7470;
+    transition: background var(--t-base) var(--ease),
+                box-shadow var(--t-base) var(--ease);
+  }
+  #bt.on {
+    color: var(--jade);
+    border-color: var(--jade-line);
+  }
+  #bt.on::before {
+    background: var(--jade);
+    box-shadow: 0 0 8px rgba(99, 216, 163, .8);
+  }
+
+  /* ---------- 控制面板 ---------- */
+  #panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 9;
+    display: none;
+    max-height: calc(100dvh - 132px);
+    padding: 12px 14px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-m);
+    background: var(--panel);
+    backdrop-filter: blur(16px) saturate(1.1);
+    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+    box-shadow: var(--shadow-2);
+    color: var(--text);
+    font-size: 12.5px;
+  }
+
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet-head .field {
+    flex: 0 1 auto;
+    margin-left: auto;
+  }
+  #collapse { min-width: 64px; }
+
+  #panel.collapsed { padding-bottom: 12px; }
+  #panel.collapsed #sheetBody { display: none; }
+  #panel.collapsed .sheet-head {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+  }
+
+  /* 面板内分段：指令与工具各自起一段 */
+  .row.cmds,
+  .row.tools {
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- 桌面标定条 ---------- */
+  #bar {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    z-index: 6;
+    display: none;
+    padding: 10px 92px 12px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-m);
+    background: var(--panel);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    box-shadow: var(--shadow-1);
+    color: var(--text);
+  }
+
+  .bar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .bar-head .muted {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    line-height: 1.5;
+  }
+
+  .bar-fields {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .bar-fields .field { font-size: 11px; }
+  .bar-fields .btn { min-height: 34px; }
+
+  #st {
+    position: fixed;
+    top: 96px;
+    left: 12px;
+    right: 12px;
+    z-index: 6;
+    display: none;
+    padding: 7px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-s);
+    background: rgba(9, 13, 14, .82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--jade);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    letter-spacing: .04em;
+    text-align: center;
+  }
+  #st.warn {
+    color: var(--warn);
+    border-color: rgba(232, 180, 90, .38);
+  }
+
+  /* ---------- 四角标定 ---------- */
+  #calib {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    touch-action: none;
+  }
+  #calib.hidden { display: none; }
+
+  #cline {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* 覆盖 SVG 表现属性，改色不必动 HTML */
+  #quad {
+    fill: var(--jade-dim);
+    stroke: var(--jade);
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 4;
+    stroke-linejoin: round;
+  }
+
+  .corner {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    margin: -23px;
+    border: 2px solid var(--jade);
+    border-radius: 50%;
+    background: rgba(99, 216, 163, .16);
+    box-shadow: 0 0 0 6px rgba(99, 216, 163, .08), var(--shadow-1);
+    cursor: grab;
+  }
+  .corner::after {
+    content: "";
+    position: absolute;
+    inset: 15px;
+    border-radius: 50%;
+    background: var(--jade);
+  }
+  .corner:active { cursor: grabbing; }
+
+  /* ---------- 自检终端 ---------- */
+  #diag {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    padding: 20px 18px 48px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(6, 9, 10, .97);
+    color: #b9e8cf;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.75;
+    letter-spacing: .01em;
+    white-space: pre-wrap;
+    cursor: pointer;
+  }
+  #diag .ok   { color: var(--jade); }
+  #diag .warn { color: var(--warn); }
+  #diag .bad  { color: var(--bad); }
+
+  /* ---------- 返回主页面（进模式后常驻右上角） ---------- */
+  #back {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    right: 12px;
+    z-index: 12;
+    display: none;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: var(--r-pill);
+    background: var(--panel);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    box-shadow: var(--shadow-1);
+  }
+  #back:hover {
+    background: var(--jade-dim);
+    border-color: var(--jade-line);
+    color: var(--text);
+  }
+
+  /* ---------- 模式显隐 ---------- */
+  body.table #hud,
+  body.table #fn,
+  body.table #bt,
+  body.table .palm-only { display: none !important; }
+
+  body:not(.table) .table-only { display: none !important; }
+
+  body:not(.table) #calib,
+  body:not(.table) #bar,
+  body:not(.table) #st { display: none !important; }
+
+  body.table #bar { display: block; }
+  body.table #st { display: block; }
+
+  /* ---------- 窄屏 ---------- */
+  @media (max-width: 620px) {
+    #panel { padding: 10px 12px 12px; left: 8px; right: 8px; }
+    .sheet-head .field { flex: 1 1 100%; margin-left: 0; }
+    .sheet-head .field select { width: 100%; }
+
+    .btn.small { min-height: 36px; padding: 0 12px; }
+    .cmdchip { min-height: 36px; }
+    .bcmd, .bsend { height: 34px; }
+    .sheet-head .field select { min-height: 36px; }
+
+    .grid.sliders { grid-template-columns: 1fr; gap: 8px; }
+    .slider { grid-template-columns: 50px minmax(0, 1fr) 60px; }
+
+    #hud { max-width: calc(100vw - 92px); font-size: 11.5px; }
+    #fn { bottom: 104px; font-size: 13px; }
+    #bt { max-width: 100%; }
+  }
+}
